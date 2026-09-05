@@ -53,7 +53,10 @@ h1{font-size:clamp(24px,5vw,37px);line-height:1.28;margin:0 auto 28px;max-width:
 .notes textarea:focus{border-color:#8fc497;box-shadow:0 0 0 4px #8fc49722}
 .note-send{display:block;margin:13px auto 0;border:0;border-radius:15px;padding:13px 25px;background:linear-gradient(135deg,#73b47b,#4e945b);color:#fff;font:800 15px "DM Sans";cursor:pointer;box-shadow:0 8px 18px #3b6c4320}
 .note-status{text-align:center;font-size:13px;margin-top:11px;min-height:20px}
-</style>
+
+.sent-congrats{border:0;background:transparent;padding:4px 8px;color:#4e945b;font:800 14px "DM Sans";cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.sent-congrats:hover{transform:scale(1.02)}
+<style>@keyframes pop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}</style></head>
 </head>
 <body>
 <div class="float f1">🌿</div><div class="float f2">💚</div><div class="float f3">🥬</div><div class="float f4">💕</div><div class="float f5">✨</div><div class="float f6">🧀</div>
@@ -143,31 +146,40 @@ function finish(){
  card.classList.add("shake");setTimeout(()=>card.classList.remove("shake"),600);
 }
 
+
+function showCongrats(){
+ const overlay=document.createElement("div");
+ overlay.style.cssText="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(39,25,45,.55);backdrop-filter:blur(5px)";
+ overlay.innerHTML=`<div style="width:min(430px,100%);background:#fff;border-radius:28px;padding:30px 24px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.22);animation:pop .25s ease">
+   <div style="font-size:45px">🎉💌🥬</div>
+   <h2 style="margin:12px 0 8px;font-family:Kalam,cursive;font-size:34px;color:#4f8c59">Congratulations! 😭😂</h2>
+   <p style="font-size:18px;line-height:1.55;margin:0;color:#333"><b>Apka message pahunch gaya hai. 💚</b></p>
+   <p style="font-size:15px;line-height:1.5;margin:12px 0 0;color:#666">Jao ab apna kaam karo 😌<br>Ab idhar hi baithi rahogi kya? 😂</p>
+   <div style="font-size:28px;margin-top:16px">🌿🧀❤️✨</div>
+ </div>`;
+ document.body.appendChild(overlay);
+}
 async function sendNote(){
  const note=document.getElementById("note"), status=document.getElementById("noteStatus");
  const text=note.value.trim();
  if(!text){status.textContent="Pehle kuch likho na 😭❤️";return}
+
  status.textContent="Sending… 💌";
+ const scriptUrl="https://script.google.com/macros/s/AKfycbwhyfHzAlTwawXDnyk8uyC8hOfLO9EZiIlwbRbTntBQGttVUOsr1T8Azh1FWXMS6x8WLQ/exec";
+
  try{
-   const res=await fetch("https://formsubmit.co/ajax/anshulyadav7906@gmail.com",{
+   const body=new URLSearchParams({note:text});
+   await fetch(scriptUrl,{
      method:"POST",
-     headers:{"Content-Type":"application/json","Accept":"application/json"},
-     body:JSON.stringify({
-       message:text,
-       _subject:"💌 New Paalak Paneer Note",
-       _template:"table",
-       _captcha:"true"
-     })
+     mode:"no-cors",
+     headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},
+     body:body.toString()
    });
-   const data=await res.json();
-   if(data.success){
-     status.textContent="Sent! 💚 Ab bas wait karo… 👀";
-     note.value="";
-   }else{
-     status.textContent="Oops 😭 Send nahi hua. Ek baar phir try karo.";
-   }
+
+   status.innerHTML='<button class="sent-congrats" onclick="showCongrats()">🎉 Congratulations! Tumhara message send ho gaya 💌</button>';
+   note.value="";
  }catch(e){
-   status.textContent="Oops 😭 Send nahi hua. Website ko online host karke try karo.";
+   status.textContent="Oops 😭 Send nahi hua. Ek baar phir try karo.";
  }
 }
 render();

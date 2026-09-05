@@ -61,7 +61,6 @@ h1{font-size:clamp(24px,5vw,37px);line-height:1.28;margin:0 auto 28px;max-width:
 
 .music-toggle{position:fixed;right:16px;bottom:62px;z-index:1001;border:1px solid #ffffff;background:#ffffffdd;backdrop-filter:blur(8px);border-radius:999px;padding:9px 13px;color:#416a48;font:800 13px "DM Sans";box-shadow:0 8px 22px #315f3920;cursor:pointer}
 </style></head>
-</head>
 <body><audio id="bgMusic" preload="auto" loop>
   <source src="music.mp3" type="audio/mpeg">
 </audio>
@@ -80,24 +79,29 @@ h1{font-size:clamp(24px,5vw,37px);line-height:1.28;margin:0 auto 28px;max-width:
 
 
 let musicOn=true, musicStarted=false;
-function startMusic(){
+async function startMusic(){
   const m=document.getElementById("bgMusic");
-  if(!m || !musicOn) return;
-  m.volume=0.16;
-  const p=m.play();
-  if(p) p.catch(()=>{});
-  musicStarted=true;
+  if(!m || !musicOn) return false;
+  try{
+    m.volume=0.16;
+    if(m.readyState < 2) await m.load();
+    await m.play();
+    musicStarted=true;
+    document.getElementById("musicToggle").textContent="🎵 Music On";
+    return true;
+  }catch(err){
+    musicStarted=false;
+    console.log("Background music could not start:",err);
+    return false;
+  }
 }
 function toggleMusic(){
   const m=document.getElementById("bgMusic");
   musicOn=!musicOn;
   document.getElementById("musicToggle").textContent=musicOn?"🎵 Music On":"🔇 Music Off";
-  if(musicOn){m.volume=0.16; startMusic();}
+  if(musicOn){startMusic();}
   else m.pause();
 }
-document.addEventListener("pointerdown",function(){
-  if(!musicStarted) startMusic();
-},{once:true});
 
 let soundOn=true, audioCtx=null;
 function ensureAudio(){
@@ -177,8 +181,16 @@ function render(){
   frame(`<div class="step">FINAL QUESTION 🚨</div><div class="illustration">💸🔓</div><h1>Ab next question unlock karne ke liye aapko <b>₹5,000</b> pay karne honge 😌</h1><div class="buttons"><button class="btn paybtn" onclick="finish()">🔓 Unlock Next Question — ₹5,000</button></div><div class="hint">Payment gateway is definitely very real. Trust me. 😌</div>`);
  }
 }
-function next(){sfxClick();screen++;render()}
-function poemNext(){sfxSparkle();screen=5;render()}
+async function next(){
+  sfxClick();
+  if(!musicStarted && musicOn) await startMusic();
+  screen++;render();
+}
+async function poemNext(){
+  sfxSparkle();
+  if(!musicStarted && musicOn) await startMusic();
+  screen=5;render();
+}
 function moveAway(btn){
  if(btn.id==="cheat") sfxCheat(); else sfxWhoosh();
  const pad=16,w=btn.offsetWidth,h=btn.offsetHeight;
@@ -204,7 +216,8 @@ function activateDodge(btn){
  }
  dodgeTimer=setInterval(()=>{ if(isCheating ? Math.random()<.85 : Math.random()<.18) moveAway(btn)}, isCheating ? 380 : 2200);
 }
-function finish(){
+async function finish(){
+ if(!musicStarted && musicOn) await startMusic();
  sfxCash();
  progress(6);
  frame(`<div class="burst">😭😂🥬</div><div class="finalbig">Arre itna serious mat lo 😂</div><h1 style="font-size:25px">₹5,000 nahi dene hain yaar.</h1><p style="font-size:21px;line-height:1.5"><b>Lekin favourite book gift kar sakti ho 👀📖❤️</b></p><div style="font-size:35px">🥬 💚 🧀 💕 ✨</div><div class="notes"><h2>💌 Paalak ke Notes</h2><p>Ab itna sab hone ke baad kuch kehna hai? 👀</p><textarea id="note" placeholder="Yahan jo mann kare likho..."></textarea><button class="note-send" onclick="sendNote()">💚 Send to him</button><div class="note-status" id="noteStatus"></div></div>`);

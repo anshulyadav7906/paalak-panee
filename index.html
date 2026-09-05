@@ -56,9 +56,16 @@ h1{font-size:clamp(24px,5vw,37px);line-height:1.28;margin:0 auto 28px;max-width:
 
 .sent-congrats{border:0;background:transparent;padding:4px 8px;color:#4e945b;font:800 14px "DM Sans";cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .sent-congrats:hover{transform:scale(1.02)}
-<style>@keyframes pop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}</style></head>
+<style>@keyframes pop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+.sound-toggle{position:fixed;right:16px;bottom:16px;z-index:1000;border:1px solid #ffffff;background:#ffffffdd;backdrop-filter:blur(8px);border-radius:999px;padding:9px 13px;color:#416a48;font:800 13px "DM Sans";box-shadow:0 8px 22px #315f3920;cursor:pointer}
+
+.music-toggle{position:fixed;right:16px;bottom:62px;z-index:1001;border:1px solid #ffffff;background:#ffffffdd;backdrop-filter:blur(8px);border-radius:999px;padding:9px 13px;color:#416a48;font:800 13px "DM Sans";box-shadow:0 8px 22px #315f3920;cursor:pointer}
+</style></head>
 </head>
-<body>
+<body><audio id="bgMusic" preload="auto" loop>
+  <source src="Kal Chaudhvin Ki Raat Thi.mp3" type="audio/mpeg">
+</audio>
+<button class="music-toggle" id="musicToggle" onclick="toggleMusic()">🎵 Music On</button><button class="sound-toggle" id="soundToggle" onclick="toggleSound()">🔊 Sound On</button>
 <div class="float f1">🌿</div><div class="float f2">💚</div><div class="float f3">🥬</div><div class="float f4">💕</div><div class="float f5">✨</div><div class="float f6">🧀</div>
 <main class="wrap">
   <header class="brand">
@@ -70,6 +77,60 @@ h1{font-size:clamp(24px,5vw,37px);line-height:1.28;margin:0 auto 28px;max-width:
   <section class="card" id="card"></section>
 </main>
 <script>
+
+
+let musicOn=true, musicStarted=false;
+function startMusic(){
+  const m=document.getElementById("bgMusic");
+  if(!m || !musicOn) return;
+  m.volume=0.16;
+  const p=m.play();
+  if(p) p.catch(()=>{});
+  musicStarted=true;
+}
+function toggleMusic(){
+  const m=document.getElementById("bgMusic");
+  musicOn=!musicOn;
+  document.getElementById("musicToggle").textContent=musicOn?"🎵 Music On":"🔇 Music Off";
+  if(musicOn){m.volume=0.16; startMusic();}
+  else m.pause();
+}
+document.addEventListener("click",function(){ if(!musicStarted) startMusic(); },{once:true});
+
+let soundOn=true, audioCtx=null;
+function ensureAudio(){
+  if(!soundOn) return null;
+  if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==="suspended") audioCtx.resume();
+  return audioCtx;
+}
+function tone(freq,duration=.09,type="sine",gain=.045,delay=0){
+  const ctx=ensureAudio(); if(!ctx) return;
+  const o=ctx.createOscillator(), g=ctx.createGain();
+  o.type=type;o.frequency.setValueAtTime(freq,ctx.currentTime+delay);
+  g.gain.setValueAtTime(.0001,ctx.currentTime+delay);
+  g.gain.exponentialRampToValueAtTime(gain,ctx.currentTime+delay+.012);
+  g.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+delay+duration);
+  o.connect(g);g.connect(ctx.destination);o.start(ctx.currentTime+delay);o.stop(ctx.currentTime+delay+duration+.02);
+}
+function sfxClick(){tone(520,.055,"sine",.035);tone(720,.07,"sine",.025,.035)}
+function sfxWhoosh(){tone(180,.10,"sawtooth",.018);tone(95,.16,"sine",.014,.045)}
+function sfxCheat(){tone(260,.07,"triangle",.025);tone(520,.08,"triangle",.022,.055);tone(850,.06,"triangle",.018,.11)}
+function sfxError(){tone(180,.09,"square",.018);tone(125,.12,"square",.015,.10)}
+function sfxSend(){tone(440,.07,"sine",.03);tone(660,.08,"sine",.025,.07);tone(880,.13,"sine",.02,.15)}
+function sfxSparkle(){tone(880,.08,"sine",.022);tone(1175,.10,"sine",.018,.08);tone(1568,.16,"sine",.015,.18)}
+function sfxTaDa(){tone(523,.10,"triangle",.03);tone(659,.10,"triangle",.03,.09);tone(784,.14,"triangle",.03,.18);tone(1047,.22,"triangle",.035,.30)}
+function sfxCash(){tone(740,.08,"square",.018);tone(370,.12,"square",.014,.09);tone(185,.16,"square",.012,.20)}
+function toggleSound(){
+ soundOn=!soundOn;
+ document.getElementById("soundToggle").textContent=soundOn?"🔊 Sound On":"🔇 Sound Off";
+ if(soundOn) sfxClick();
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest(".btn,.note-send");
+  if(b && !b.id) sfxClick();
+},{passive:true});
+
 const poem=`तेरे जाने की आहट तो सुनाई देती है,
 मगर तेरा ख़ामोश हो जाना उम्र भर सुनाई देता है।
 
@@ -114,9 +175,10 @@ function render(){
   frame(`<div class="step">FINAL QUESTION 🚨</div><div class="illustration">💸🔓</div><h1>Ab next question unlock karne ke liye aapko <b>₹5,000</b> pay karne honge 😌</h1><div class="buttons"><button class="btn paybtn" onclick="finish()">🔓 Unlock Next Question — ₹5,000</button></div><div class="hint">Payment gateway is definitely very real. Trust me. 😌</div>`);
  }
 }
-function next(){screen++;render()}
-function poemNext(){screen=5;render()}
+function next(){sfxClick();screen++;render()}
+function poemNext(){sfxSparkle();screen=5;render()}
 function moveAway(btn){
+ if(btn.id==="cheat") sfxCheat(); else sfxWhoosh();
  const pad=16,w=btn.offsetWidth,h=btn.offsetHeight;
  const maxX=Math.max(pad,window.innerWidth-w-pad),maxY=Math.max(70,window.innerHeight-h-pad);
  const x=pad+Math.random()*(maxX-pad),y=70+Math.random()*(maxY-70);
@@ -141,6 +203,7 @@ function activateDodge(btn){
  dodgeTimer=setInterval(()=>{ if(isCheating ? Math.random()<.85 : Math.random()<.18) moveAway(btn)}, isCheating ? 380 : 2200);
 }
 function finish(){
+ sfxCash();
  progress(6);
  frame(`<div class="burst">😭😂🥬</div><div class="finalbig">Arre itna serious mat lo 😂</div><h1 style="font-size:25px">₹5,000 nahi dene hain yaar.</h1><p style="font-size:21px;line-height:1.5"><b>Lekin favourite book gift kar sakti ho 👀📖❤️</b></p><div style="font-size:35px">🥬 💚 🧀 💕 ✨</div><div class="notes"><h2>💌 Paalak ke Notes</h2><p>Ab itna sab hone ke baad kuch kehna hai? 👀</p><textarea id="note" placeholder="Yahan jo mann kare likho..."></textarea><button class="note-send" onclick="sendNote()">💚 Send to him</button><div class="note-status" id="noteStatus"></div></div>`);
  card.classList.add("shake");setTimeout(()=>card.classList.remove("shake"),600);
@@ -148,6 +211,7 @@ function finish(){
 
 
 function showCongrats(){
+ sfxTaDa();
  const overlay=document.createElement("div");
  overlay.style.cssText="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(39,25,45,.55);backdrop-filter:blur(5px)";
  overlay.innerHTML=`<div style="width:min(430px,100%);background:#fff;border-radius:28px;padding:30px 24px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.22);animation:pop .25s ease">
@@ -162,9 +226,9 @@ function showCongrats(){
 async function sendNote(){
  const note=document.getElementById("note"), status=document.getElementById("noteStatus");
  const text=note.value.trim();
- if(!text){status.textContent="Pehle kuch likho na 😭❤️";return}
+ if(!text){sfxError();status.textContent="Pehle kuch likho na 😭❤️";return}
 
- status.textContent="Sending… 💌";
+ sfxSend(); status.textContent="Sending… 💌";
  const scriptUrl="https://script.google.com/macros/s/AKfycbwhyfHzAlTwawXDnyk8uyC8hOfLO9EZiIlwbRbTntBQGttVUOsr1T8Azh1FWXMS6x8WLQ/exec";
 
  try{
@@ -176,7 +240,7 @@ async function sendNote(){
      body:body.toString()
    });
 
-   status.innerHTML='<button class="sent-congrats" onclick="showCongrats()">💌 Aapka message pahunch chuka hai</button>';
+   sfxTaDa(); status.innerHTML='<button class="sent-congrats" onclick="showCongrats()">💌 Aapka message pahunch chuka hai</button>';
    note.value="";
  }catch(e){
    status.textContent="Oops 😭 Send nahi hua. Ek baar phir try karo.";

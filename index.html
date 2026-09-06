@@ -59,6 +59,17 @@ h1{font-size:clamp(24px,5vw,37px);line-height:1.28;margin:0 auto 28px;max-width:
 @keyframes pop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
 .sound-toggle{position:fixed;right:16px;bottom:16px;z-index:1000;border:1px solid #ffffff;background:#ffffffdd;backdrop-filter:blur(8px);border-radius:999px;padding:9px 13px;color:#416a48;font:800 13px "DM Sans";box-shadow:0 8px 22px #315f3920;cursor:pointer}
 
+.congrats-overlay{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(39,25,45,.55);backdrop-filter:blur(5px)}
+.congrats-modal{width:min(430px,100%);background:#fff;border-radius:28px;padding:30px 24px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.22);animation:pop .25s ease}
+.congrats-icons{font-size:45px;line-height:1.1;margin-bottom:10px}
+.congrats-banner{display:inline-block;background:#5b70cf;color:#fff;padding:10px 18px;font:700 35px Kalam,cursive;border-radius:0;margin:0 0 18px}
+.congrats-banner.small{font-size:25px;border-radius:16px}
+.congrats-modal h2{margin:0 0 10px;font-size:27px;color:#333}
+.congrats-main{font-size:20px;line-height:1.55;margin:0;color:#333}
+.congrats-deco{font-size:28px;margin:20px 0 18px;letter-spacing:5px}
+.congrats-next{border:0;border-radius:17px;padding:13px 28px;font:800 15px "DM Sans";cursor:pointer;background:linear-gradient(135deg,#76b77e,#4e945b);color:#fff;box-shadow:0 8px 18px #3b6c4328;transition:.18s}
+.congrats-next:hover{transform:translateY(-2px);box-shadow:0 11px 22px #3b6c4338}
+
 .music-toggle{position:fixed;right:16px;bottom:62px;z-index:1001;border:1px solid #ffffff;background:#ffffffdd;backdrop-filter:blur(8px);border-radius:999px;padding:9px 13px;color:#416a48;font:800 13px "DM Sans";box-shadow:0 8px 22px #315f3920;cursor:pointer}
 </style></head>
 <body><audio id="bgMusic" preload="auto" loop>
@@ -258,16 +269,36 @@ function finish(){
 function showCongrats(){
  sfxTaDa();
  const overlay=document.createElement("div");
- overlay.style.cssText="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:22px;background:rgba(39,25,45,.55);backdrop-filter:blur(5px)";
- overlay.innerHTML=`<div style="width:min(430px,100%);background:#fff;border-radius:28px;padding:30px 24px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.22);animation:pop .25s ease">
-   <div style="font-size:45px">🎉💌🥬</div>
-   <h2 style="margin:12px 0 8px;font-family:Kalam,cursive;font-size:34px;color:#4f8c59">Congratulations! 😭😂</h2>
-   <p style="font-size:18px;line-height:1.55;margin:0;color:#333"><b>Congratulations! 🎉<br>Apka message pahunch gaya hai. 💚</b></p>
-   <p style="font-size:15px;line-height:1.5;margin:12px 0 0;color:#666">Jao ab apna kaam karo 😌<br>Ab idhar hi baithi rahogi kya? 😂</p>
-   <div style="font-size:28px;margin-top:16px">🌿🧀❤️✨</div>
+ overlay.className="congrats-overlay";
+ overlay.innerHTML=`<div class="congrats-modal" id="congratsModal">
+   <div class="congrats-icons">🎉💌🥬</div>
+   <div class="congrats-banner">Congratulations! 😭😂</div>
+   <h2>Congratulations! 🎉</h2>
+   <p class="congrats-main"><b>Apka message pahunch gaya hai. 💚</b></p>
+   <div class="congrats-deco">🌿 🧀 ❤️ ✨</div>
+   <button class="congrats-next" onclick="showCongratsNext()">NEXT 😌</button>
  </div>`;
  document.body.appendChild(overlay);
 }
+
+function showCongratsNext(){
+ sfxTaDa();
+ const modal=document.getElementById("congratsModal");
+ if(!modal) return;
+ modal.innerHTML=`
+   <div class="congrats-icons">🥬😌😂💚</div>
+   <div class="congrats-banner small">Okay, bas ho gaya 😭😂</div>
+   <h2>Jao ab apna kaam karo 😌</h2>
+   <p class="congrats-main"><b>Ab idhar hi baithi rahogi kya? 😂</b></p>
+   <div class="congrats-deco">🌿 🧀 ❤️ ✨</div>
+   <button class="congrats-next" onclick="closeCongrats()">JAO JAO 😂</button>`;
+}
+
+function closeCongrats(){
+ const overlay=document.querySelector(".congrats-overlay");
+ if(overlay) overlay.remove();
+}
+
 async function sendNote(){
  const note=document.getElementById("note"), status=document.getElementById("noteStatus");
  const text=note.value.trim();

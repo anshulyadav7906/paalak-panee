@@ -218,10 +218,9 @@ function poemNext(){
 function moveAway(btn, clientX, clientY){
   if(btn.id==="cheat") sfxCheat(); else sfxWhoosh();
 
-  const pad=16, topPad=78;
+  const pad=12, topPad=78;
   const w=btn.offsetWidth, h=btn.offsetHeight;
-  const maxX=Math.max(pad,window.innerWidth-w-pad);
-  const maxY=Math.max(topPad,window.innerHeight-h-pad);
+  const vw=window.innerWidth, vh=window.innerHeight;
 
   const r=btn.getBoundingClientRect();
   const cx=r.left+r.width/2, cy=r.top+r.height/2;
@@ -229,16 +228,57 @@ function moveAway(btn, clientX, clientY){
   const len=Math.hypot(dx,dy)||1;
   dx/=len; dy/=len;
 
-  // Move in the direction opposite the cursor/touch, rather than randomly.
-  const distance=220;
-  let targetCx=cx+dx*distance;
-  let targetCy=cy+dy*distance;
-  targetCx=Math.min(Math.max(targetCx,w/2+pad),window.innerWidth-w/2-pad);
-  targetCy=Math.min(Math.max(targetCy,h/2+topPad),window.innerHeight-h/2-pad);
+  // On phones the dodging button must NEVER land on top of the YES button.
+  const yes=btn.parentElement?.querySelector('.yes');
+  const yesRect=yes ? yes.getBoundingClientRect() : null;
+  const gap=18;
+  const overlapsYes=(left,top)=>{
+    if(!yesRect) return false;
+    return !(left+w+gap < yesRect.left || left-gap > yesRect.right ||
+             top+h+gap < yesRect.top || top-gap > yesRect.bottom);
+  };
+
+  const clamp=(left,top)=>({
+    left:Math.min(Math.max(left,pad),vw-w-pad),
+    top:Math.min(Math.max(top,topPad),vh-h-pad)
+  });
+
+  // Try the direction opposite the cursor first, then several alternate
+  // directions if that spot would cover the YES button.
+  const distance=Math.min(220, Math.max(120, Math.min(vw,vh)*0.32));
+  const angles=[
+    Math.atan2(dy,dx),
+    Math.atan2(dy,dx)+Math.PI/3,
+    Math.atan2(dy,dx)-Math.PI/3,
+    Math.atan2(dy,dx)+Math.PI/2,
+    Math.atan2(dy,dx)-Math.PI/2,
+    Math.atan2(dy,dx)+Math.PI
+  ];
+
+  let target=null;
+  for(const angle of angles){
+    const tx=cx+Math.cos(angle)*distance-w/2;
+    const ty=cy+Math.sin(angle)*distance-h/2;
+    const candidate=clamp(tx,ty);
+    if(!overlapsYes(candidate.left,candidate.top)){
+      target=candidate;
+      break;
+    }
+  }
+
+  // Last-resort safe spots around the screen, still away from YES.
+  if(!target){
+    const spots=[
+      [pad,topPad],[vw-w-pad,topPad],
+      [pad,vh-h-pad],[vw-w-pad,vh-h-pad],
+      [(vw-w)/2,topPad],[ (vw-w)/2,vh-h-pad ]
+    ];
+    target=spots.map(([x,y])=>clamp(x,y)).find(p=>!overlapsYes(p.left,p.top)) || clamp(pad,topPad);
+  }
 
   btn.classList.add("dodge");
-  btn.style.left=(targetCx-w/2)+"px";
-  btn.style.top=(targetCy-h/2)+"px";
+  btn.style.left=target.left+"px";
+  btn.style.top=target.top+"px";
   btn.style.transform=`rotate(${(Math.random()*8-4).toFixed(1)}deg)`;
 }
 function activateDodge(btn){

@@ -56,7 +56,7 @@ h1{font-size:clamp(24px,5vw,37px);line-height:1.28;margin:0 auto 28px;max-width:
 
 .sent-congrats{border:0;background:transparent;padding:4px 8px;color:#4e945b;font:800 14px "DM Sans";cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 .sent-congrats:hover{transform:scale(1.02)}
-<style>@keyframes pop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes pop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
 .sound-toggle{position:fixed;right:16px;bottom:16px;z-index:1000;border:1px solid #ffffff;background:#ffffffdd;backdrop-filter:blur(8px);border-radius:999px;padding:9px 13px;color:#416a48;font:800 13px "DM Sans";box-shadow:0 8px 22px #315f3920;cursor:pointer}
 
 .music-toggle{position:fixed;right:16px;bottom:62px;z-index:1001;border:1px solid #ffffff;background:#ffffffdd;backdrop-filter:blur(8px);border-radius:999px;padding:9px 13px;color:#416a48;font:800 13px "DM Sans";box-shadow:0 8px 22px #315f3920;cursor:pointer}
@@ -79,20 +79,22 @@ h1{font-size:clamp(24px,5vw,37px);line-height:1.28;margin:0 auto 28px;max-width:
 
 
 let musicOn=true, musicStarted=false;
-async function startMusic(){
+function startMusic(){
   const m=document.getElementById("bgMusic");
-  if(!m || !musicOn) return false;
-  try{
-    m.volume=0.16;
-    if(m.readyState < 2) await m.load();
-    await m.play();
+  if(!m || !musicOn || musicStarted) return;
+
+  m.volume=0.16;
+  const p=m.play();
+  if(p && typeof p.then==="function"){
+    p.then(()=>{
+      musicStarted=true;
+      document.getElementById("musicToggle").textContent="🎵 Music On";
+    }).catch(err=>{
+      musicStarted=false;
+      console.log("Background music could not start:",err);
+    });
+  }else{
     musicStarted=true;
-    document.getElementById("musicToggle").textContent="🎵 Music On";
-    return true;
-  }catch(err){
-    musicStarted=false;
-    console.log("Background music could not start:",err);
-    return false;
   }
 }
 function toggleMusic(){
@@ -106,9 +108,17 @@ function toggleMusic(){
 let soundOn=true, audioCtx=null;
 function ensureAudio(){
   if(!soundOn) return null;
-  if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-  if(audioCtx.state==="suspended") audioCtx.resume();
-  return audioCtx;
+  try{
+    if(!audioCtx){
+      const AudioCtor=window.AudioContext||window.webkitAudioContext;
+      if(!AudioCtor) return null;
+      audioCtx=new AudioCtor();
+    }
+    if(audioCtx.state==="suspended") audioCtx.resume().catch(()=>{});
+    return audioCtx;
+  }catch(e){
+    return null;
+  }
 }
 function tone(freq,duration=.09,type="sine",gain=.045,delay=0){
   const ctx=ensureAudio(); if(!ctx) return;
@@ -181,44 +191,64 @@ function render(){
   frame(`<div class="step">FINAL QUESTION 🚨</div><div class="illustration">💸🔓</div><h1>Ab next question unlock karne ke liye aapko <b>₹5,000</b> pay karne honge 😌</h1><div class="buttons"><button class="btn paybtn" onclick="finish()">🔓 Unlock Next Question — ₹5,000</button></div><div class="hint">Payment gateway is definitely very real. Trust me. 😌</div>`);
  }
 }
-async function next(){
+function next(){
+  // Never wait for audio before changing the question.
   sfxClick();
-  if(!musicStarted && musicOn) await startMusic();
-  screen++;render();
+  screen++;
+  render();
+  if(!musicStarted && musicOn) startMusic();
 }
-async function poemNext(){
+function poemNext(){
   sfxSparkle();
-  if(!musicStarted && musicOn) await startMusic();
-  screen=5;render();
+  screen=5;
+  render();
+  if(!musicStarted && musicOn) startMusic();
 }
-function moveAway(btn){
- if(btn.id==="cheat") sfxCheat(); else sfxWhoosh();
- const pad=16,w=btn.offsetWidth,h=btn.offsetHeight;
- const maxX=Math.max(pad,window.innerWidth-w-pad),maxY=Math.max(70,window.innerHeight-h-pad);
- const x=pad+Math.random()*(maxX-pad),y=70+Math.random()*(maxY-70);
- btn.classList.add("dodge");btn.style.left=x+"px";btn.style.top=y+"px";btn.style.transform=`rotate(${(Math.random()*10-5).toFixed(1)}deg)`;
+function moveAway(btn, clientX, clientY){
+  if(btn.id==="cheat") sfxCheat(); else sfxWhoosh();
+
+  const pad=16, topPad=78;
+  const w=btn.offsetWidth, h=btn.offsetHeight;
+  const maxX=Math.max(pad,window.innerWidth-w-pad);
+  const maxY=Math.max(topPad,window.innerHeight-h-pad);
+
+  const r=btn.getBoundingClientRect();
+  const cx=r.left+r.width/2, cy=r.top+r.height/2;
+  let dx=cx-clientX, dy=cy-clientY;
+  const len=Math.hypot(dx,dy)||1;
+  dx/=len; dy/=len;
+
+  // Move in the direction opposite the cursor/touch, rather than randomly.
+  const distance=220;
+  let targetCx=cx+dx*distance;
+  let targetCy=cy+dy*distance;
+  targetCx=Math.min(Math.max(targetCx,w/2+pad),window.innerWidth-w/2-pad);
+  targetCy=Math.min(Math.max(targetCy,h/2+topPad),window.innerHeight-h/2-pad);
+
+  btn.classList.add("dodge");
+  btn.style.left=(targetCx-w/2)+"px";
+  btn.style.top=(targetCy-h/2)+"px";
+  btn.style.transform=`rotate(${(Math.random()*8-4).toFixed(1)}deg)`;
 }
 function activateDodge(btn){
- dodgeBtn=btn;
- const isCheating = btn.id === "cheat";
- if(isCheating) btn.style.transition="left .06s ease, top .06s ease, transform .06s ease";
- btn.addEventListener("mouseenter",()=>moveAway(btn));
- btn.addEventListener("touchstart",e=>{e.preventDefault();moveAway(btn)},{passive:false});
- btn.addEventListener("click",e=>{e.preventDefault();moveAway(btn)});
- if(isCheating){
-   document.addEventListener("mousemove",e=>{
-     if(!document.body.contains(btn)) return;
-     const r=btn.getBoundingClientRect();
-     const cx=r.left+r.width/2, cy=r.top+r.height/2;
-     const d=Math.hypot(e.clientX-cx,e.clientY-cy);
-     if(d<170) moveAway(btn);
-   });
- }
- dodgeTimer=setInterval(()=>{ if(isCheating ? Math.random()<.85 : Math.random()<.18) moveAway(btn)}, isCheating ? 380 : 2200);
+  dodgeBtn=btn;
+
+  // The button moves ONLY when the user actually tries to press it.
+  // No random timer and no mouse-proximity trigger.
+  btn.addEventListener("pointerdown",e=>{
+    e.preventDefault();
+    e.stopPropagation();
+    moveAway(btn,e.clientX,e.clientY);
+  });
+
+  btn.addEventListener("click",e=>{
+    e.preventDefault();
+    e.stopPropagation();
+  });
 }
-async function finish(){
- if(!musicStarted && musicOn) await startMusic();
+function finish(){
  sfxCash();
+ screen=7;
  progress(6);
  frame(`<div class="burst">😭😂🥬</div><div class="finalbig">Arre itna serious mat lo 😂</div><h1 style="font-size:25px">₹5,000 nahi dene hain yaar.</h1><p style="font-size:21px;line-height:1.5"><b>Lekin favourite book gift kar sakti ho 👀📖❤️</b></p><div style="font-size:35px">🥬 💚 🧀 💕 ✨</div><div class="notes"><h2>💌 Paalak ke Notes</h2><p>Ab itna sab hone ke baad kuch kehna hai? 👀</p><textarea id="note" placeholder="Yahan jo mann kare likho..."></textarea><button class="note-send" onclick="sendNote()">💚 Send to him</button><div class="note-status" id="noteStatus"></div></div>`);
  card.classList.add("shake");setTimeout(()=>card.classList.remove("shake"),600);
